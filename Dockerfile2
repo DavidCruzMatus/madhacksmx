@@ -1,0 +1,52 @@
+#sudo apt install docker.io
+FROM debian:latest
+
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
+ENV PATH /opt/conda/bin:$PATH
+
+RUN apt-get update --fix-missing && apt-get install -y wget bzip2 ca-certificates \
+    libglib2.0-0 libxext6 libsm6 libxrender1 \
+    git mercurial subversion
+
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda2-4.5.11-Linux-x86_64.sh -O ~/miniconda.sh && \
+    /bin/bash ~/miniconda.sh -b -p /opt/conda && \
+    rm ~/miniconda.sh && \
+    ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
+    echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
+    echo "conda activate base" >> ~/.bashrc
+
+RUN apt-get install -y curl grep sed dpkg && \
+    TINI_VERSION=`curl https://github.com/krallin/tini/releases/latest | grep -o "/v.*\"" | sed 's:^..\(.*\).$:\1:'` && \
+    curl -L "https://github.com/krallin/tini/releases/download/v${TINI_VERSION}/tini_${TINI_VERSION}.deb" > tini.deb && \
+    dpkg -i tini.deb && \
+    rm tini.deb && \
+    apt-get clean
+
+# Create the environment:
+RUN mkdir -p /social
+COPY . /social
+WORKDIR /social
+
+# Initialize conda in bash config fiiles:
+SHELL ["/bin/bash", "--login", "-c"]
+RUN conda create --name madhacksmx -y python=3.7 tensorflow numpy PyYAML pip flask
+RUN conda install -n madhacksmx -c conda-forge -y imutils opencv cx_oracle
+RUN conda init bash
+RUN conda activate madhacksmx
+
+# Install oracle lib:
+RUN apt update
+RUN apt-get install -y libaio-dev libgl1-mesa-glx libqt5x11extras5
+RUN sh -c "echo $HOME/social/oralib > /etc/ld.so.conf.d/oracle-instantclient.conf"
+RUN ldconfig
+RUN export LD_LIBRARY_PATH=$HOME/social/oralib:$LD_LIBRARY_PATH
+
+# Activate the environment, and make sure it's activated:
+RUN echo "conda activate madhacksmx" >> ~/.bashrc
+RUN echo "export ORACLE_HOME=/social/oralib" >> ~/.bashrc
+RUN echo "ldconfig" >> ~/.bashrc
+RUN echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ORACLE_HOME" >> ~/.bashrc
+
+#ENTRYPOINT [ "/usr/bin/tini", "--" ]
+
+CMD [ "/bin/bash" ]
