@@ -113,6 +113,8 @@ apt-get install -y libaio-dev libgl1-mesa-glx
 sh -c "echo /root/oracle/instantclient_19_9 > /etc/ld.so.conf.d/oracle-instantclient.conf"
 ldconfig
 apt-get install -y git
-EXECUTE CODE:	
+EXECUTE CODE:
+-Download code from https://drive.google.com/file/d/137T2pZiWYFp8tTPZWmA_CWCyosyg8asZ/view?usp=sharing
+	
 1.-Run the code from /root/xxx/src/social_distanciation_video_detection
 	# python social_distanciation_video_detection.py
