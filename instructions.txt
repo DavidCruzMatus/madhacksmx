@@ -1,0 +1,118 @@
+Hello Everyone, We are the OCS-TECH-MX team and we will be presenting our project for MadHacks 2021 called Social Distance Monitoring. 
+Let me take you on a trip of our project, WELCOME!!!
+
+For our project we built a Deep Learning model and deployed it on OCI, which does all the magic. Let´s start by showing the components that make our solution possible, We use a Virtual Machine with Oracle Linux 7 , Oracle Autonomous Data Warehouse and Oracle Analytics Cloud, which are all available on Oracle Cloud Infrastructure. 
+-In the Autonomous DataWarehouse lets create a Table called COVID_SOCIAL_DISTANCIA_T .
+	-EXECUTE SCRIPT (CREATION_TAB_SD.sql) to create object into ADW.
+   
+CREATE TABLE "MLUSER"."COVID_SOCIAL_DISTANCIA_T" 
+   (	"PERSONA" NUMBER, 
+	"LATITUD" VARCHAR2(30 BYTE) COLLATE "USING_NLS_COMP", 
+	"LONGITUD" VARCHAR2(30 BYTE) COLLATE "USING_NLS_COMP", 
+	"DISTANCIA" VARCHAR2(30 BYTE) COLLATE "USING_NLS_COMP", 
+	"TIEMPO" TIMESTAMP (6)
+   )  DEFAULT COLLATION "USING_NLS_COMP" SEGMENT CREATION IMMEDIATE 
+  PCTFREE 10 PCTUSED 40 INITRANS 10 MAXTRANS 255 
+ COLUMN STORE COMPRESS FOR QUERY HIGH ROW LEVEL LOCKING LOGGING
+  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1
+  BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)
+  TABLESPACE "DATA" ;
+
+This table will work as target for the code´s output and as source for Oracle Analytics, Later we will talk about Oracle Analytics configuration:
+
+-In the following step we will install a Docker into the VM Machine , to do that open ssh connection to VM and execute following commands:
+	sudo yum-config-manager --enable ol7_addons
+	sudo yum install docker-engine
+	sudo systemctl start docker  
+	sudo systemctl enable docker
+	
+	-Next, run the following commands so that we can use Docker as a non-root user:
+		sudo groupadd docker
+		sudo service docker restart
+		sudo usermod -a -G docker opc
+	
+		Log out, and log back in and we're ready to run docker commands as the opc user.
+		
+		
+-Now we will run the docker container. 
+	-As pre-requisite we have to add access with port 6080 into security list from OCI console.
+	1.-Run the docket container executing the following command from ssh connection.
+		docker run -p 6080:80 -v /dev/shm:/dev/shm dorowu/ubuntu-desktop-lxde-vnc
+		
+	2.-To access docker container, go to an internet browser and put:
+	 http://132.145.210.76:6080/
+		
+-Open a terminal and download scripts and code from git repository.
+	# cd /root
+	# git clone https://DavidCruzMatus:"CruzMatus2020!"@github.com/DavidCruzMatus/madhacksmx.git
+	
+
+-Install Oracle Client to connect to Autonomous Data Warehouse.
+	1.-Download "Paquete Basic (ZIP)" version 19.9.0.0.0 from https://www.oracle.com/mx/database/technologies/instant-client/linux-x86-64-downloads.html
+		Typing on a browser: "Download Instant client for ubuntu".
+	2.-Create directory oracle under /root 
+		# cd /root
+		# mkdir oracle
+	3.-Put package downloaded under /root/oracle
+		# cd /root/Downloads
+		# mv instantclient-basic-linux.x64-19.9.0.0.0dbru.zip /root/oracle
+	4.-Move install_oracleClient.sh to /root/oracle
+		# mv install_oracleClient.sh /root/oracle
+	5.-Set permission to install_oracleClient.sh
+		# chmod 777 install_oracleClient.sh
+	6.-Execute the script install_oracleClient.sh into /root/oracle directory
+		# ./install_oracleClient.sh
+	
+#!/bin/bash
+apt-get update
+apt-get install -y zip
+unzip /root/oracle/instantclient-basic-linux.x64-19.6.0.0.0dbru.zip
+echo "export PATH=$PATH:/root/oracle/instantclient_19_9" >> ~/.bashrc
+echo "export TNS_ADMIN=/root/oracle/instantclient_19_9/network/admin" >> ~/.bashrc
+echo "export LD_LIBRARY_PATH=/root/oracle/instantclient_19_9" >> ~/.bashrc
+
+	7.-Put your wallet credentials "Wallet_DBML.zip" under /root/instantclient_19_6/network/admin and unzip it.
+		# cd /root/instantclient_19_6/network/admin
+		# unzip Wallet_DBML.zip
+		
+	
+-In the next step we will to create a Machine Learning environment to execute our code. We create a script to install all needed packages so, lets run it!
+1.-Move script mlenvironment_01.sh and mlenvironment_01.sh to /root directory.
+	# mv mlenvironment_01.sh /root
+2.-Modify permission to mlenvironment_01.sh and mlenvironment_01.sh
+	# chmod 777 mlenvironment_01.sh
+	# chmod 777 mlenvironment_02.sh
+	
+3.-Run script from /root directory.
+	# ./mlenvironment_01.sh 
+
+
+#!/bin/bash
+# Create the environment:
+wget --quiet https://repo.anaconda.com/miniconda/Miniconda2-4.5.11-Linux-x86_64.sh -O ~/miniconda.sh && \
+    /bin/bash ~/miniconda.sh -b -p /opt/conda && \
+    rm ~/miniconda.sh && \
+    ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
+    echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc 
+echo "export PATH=$PATH:/opt/conda/bin" >> ~/.bashrc
+conda update -y -n base -c defaults conda
+conda create -y --name madhacksmx -y python=3.7 tensorflow numpy PyYAML pip flask
+conda init bash
+
+4.-Close and re-open your current shell
+5.-Execute script mlenvironment_02.sh from /root directory.
+	# ./mlenvironment_02.sh 
+
+#!/bin/bash
+conda activate madhacksmx
+conda install -y -n madhacksmx -c conda-forge -y imutils opencv cx_oracle
+# Activate oracle lib:
+apt update
+apt-get install -y libaio-dev libgl1-mesa-glx 
+sh -c "echo /root/oracle/instantclient_19_9 > /etc/ld.so.conf.d/oracle-instantclient.conf"
+ldconfig
+apt-get install -y git
+EXECUTE CODE:	
+1.-Run the code from /root/xxx/src/social_distanciation_video_detection
+	# python social_distanciation_video_detection.py
